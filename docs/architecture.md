@@ -4,7 +4,8 @@
 
 HoopsLab currently provides a reproducible path from six immutable external
 shot snapshots through normalized PostgreSQL storage to local feature and split
-artifacts. Model training, FastAPI, and React are deliberate later boundaries.
+artifacts and a locked local model. FastAPI and React product surfaces are
+deliberate later boundaries.
 
 ```text
 Pinned revision + six asset SHA-256 values
@@ -124,13 +125,104 @@ The main MVP candidate is scikit-learn histogram gradient boosting over the
 same feature contract. A more complex model advances only if it improves log
 loss and Brier score without degrading overall or major-slice calibration.
 ROC-AUC is secondary; accuracy is not a selection metric. Reliability diagrams,
-bin counts, and observed-versus-expected slices are required outputs. No model
-results exist yet.
+bin counts, and observed-versus-expected slices are required outputs.
+
+## Held-out evaluation
+
+After the procedure was locked, the selected `hgb-lr0.05-leaves15-sigmoid`
+model was evaluated once on the 2023-24 regular season: 218,701 shots across
+1,230 whole games from 2023-10-24 through 2024-04-14. Its log loss was
+0.637055, Brier score 0.224358, ROC-AUC 0.657832, and fixed ten-bin ECE
+0.006517. The locked `logistic-c1-isotonic` comparator recorded 0.642787,
+0.226538, 0.650390, and 0.006944 respectively. The selected-minus-logistic
+deltas were -0.005732 log loss and -0.002180 Brier.
+
+The 300-replicate whole-game bootstrap gave selected-model 95% intervals of
+[0.635614, 0.638626] for log loss and [0.223689, 0.225034] for Brier. Paired
+selected-minus-logistic intervals were [-0.006609, -0.004852] and
+[-0.002405, -0.001898]. The small ECE improvement is a calibration diagnostic,
+not proof of uniformly calibrated probabilities in every context.
+
+Predeclared slices show useful discrimination on attempts under 8 ft (log loss
+0.601507, ROC-AUC 0.709850, ECE 0.015320), but weaker separation for threes
+(0.653231, 0.529290, 0.007230) and midrange: 16–24 ft (0.675261, 0.515300,
+0.021970) and 8–16 ft (0.682896, 0.538960, 0.014490). These are reported as
+weak slices too, rather than selectively highlighting favorable contexts.
+
+Selection-only descriptive checks ranked `action_type` (0.059650) and source
+distance (0.021330) as the largest deterministic permutation decreases in
+negative log loss. Predicted versus observed make rates were 0.651/0.669 close
+to the basket and 0.359/0.355 at 25+ ft. The 4–8 ft versus 9–16 ft pattern
+indicates feature interaction rather than a causal effect; no feature-importance
+or distance claim is causal.
+
+The model remains a coarse contextual contract: it intentionally excludes
+player, team, and opponent identities and lacks score, defender, lineup, and
+venue context. Weak midrange and three-point discrimination are material limits
+for later analysis, not reasons to reopen the locked held-out evaluation.
+
+## Frozen modeling protocol
+
+Modeling uses exactly the 13 feature-contract inputs: six numeric geometry or
+clock fields, `shooter_is_home`, and six categorical action/type/zone fields.
+The target and all identifiers are excluded before every estimator fit. The
+loader validates the Parquet schema and metadata, hashes both feature and split
+artifacts, predicate-loads only explicitly authorized development seasons, and
+cannot load 2023-24 through a development entry point.
+
+Internal tuning uses whole-season chronological folds: train 2018-19 / validate
+2019-20; train 2018-20 / validate 2020-21; and train 2018-21 / validate
+2021-22. Each family is selected by mean unrounded fold log loss, mean Brier,
+fold log-loss standard deviation, ROC-AUC, and stable lower-complexity ID.
+
+The final 2022-23 validation season has a fixed chronological boundary. Games
+through 2023-01-10 inclusive fit only calibrators; games from 2023-01-11 through
+2023-04-09 independently select family, hyperparameters, and calibration.
+Base estimators fit only 2018-19 through 2021-22. Calibration candidates are
+none, sigmoid, and isotonic; frozen estimators prevent calibration from
+refitting bases.
+
+The logistic pipeline scales the six numeric fields, passes the home boolean,
+and learns one-hot categories with unknown-category ignore behavior. Its only
+grid is L2 `C` in 0.1, 1, and 10. Histogram gradient boosting uses train-fitted
+ordinal categories with unknown/missing values represented as `NaN` and an
+explicit categorical mask, never ordinal codes as continuous quantities. Its
+bounded grid is learning rate 0.05/0.10 by 15/31 leaves, with 300 iterations,
+100 minimum leaf samples, L2=1, and early stopping disabled.
+
+Independent selection ranks selection log loss, Brier, fixed ten-bin ECE, mean
+qualifying slice ECE, fold stability, then ROC-AUC. Exact ties prefer logistic,
+no calibration, then lexical ID. Predeclared slices require at least 2,000 rows:
+shot type, zone range, periods 1–4/5+, home/away, and four remaining-clock
+buckets. The final report uses a 300-replicate whole-game bootstrap with seed
+20260813 for selected and paired selected-minus-logistic log loss/Brier CIs.
+
+`develop_model.py` writes an ignored local joblib bundle, adjacent portable
+manifest, and explicit `pending_review` selection record. It records the full
+selected and logistic-comparator variants, independent selection metrics,
+runner-up deltas, segments, folds, fitted-preprocessing identity, hashes,
+versions, seeds, and a no-test-access assertion. `lock_model.py` is a separate
+coordinator-authorization action: it validates the records and bundle and
+atomically changes only a valid pending record to `locked`. `evaluate_model.py`
+validates that locked record and bundle before loading 2023-24, and refuses to
+overwrite a final test report. This lets the analytics API load the selected
+bundle without retraining while retaining a one-time held-out evaluation
+boundary.
+
+Final evaluation creates an ignored atomic `.final-test-reservation.json` marker
+before hashing or loading test features. A pre-access validation failure releases
+the marker; a failure after test loading retains it, deliberately requiring human
+review before another attempt. Completed reports use atomic replacement.
+
+Development split validation reads only the leading, chronologically ordered
+2018-19 through 2022-23 game assignments, then closes before the first held-out
+game object. This boundary relies on the frozen split writer's `sort_keys=True`
+key order and chronological game ordering; the full split-file SHA-256 remains
+part of the locked artifact identity.
 
 ## Generated artifacts
 
 Raw/processed data, PostgreSQL volumes, feature matrices, trained models, ML
-caches, and evaluation outputs are ignored. A future artifact manifest must
-record source hashes, feature/schema version, split boundaries, environment
-lock, parameters, metrics, and training time before any generated model is
-versioned or served.
+caches, and evaluation outputs are ignored. The local modeling manifest records
+source/feature identities, feature/schema version, split boundaries, package
+versions, seeds, parameters, metrics, artifact SHA-256, and training time.

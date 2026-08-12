@@ -3,15 +3,16 @@
 HoopsLab is a basketball analytics project building toward a contextual NBA
 shot-quality model and an interactive shot-analysis product. It currently
 implements revision/hash-pinned multi-season ingestion, normalized PostgreSQL
-storage, leakage-aware feature construction, and deterministic chronological
-splits. It does not yet train a model or serve an API/dashboard.
+storage, leakage-aware feature construction, deterministic chronological
+splits, and a leakage-guarded shot-quality modeling workflow. It does not yet
+serve an API/dashboard.
 
 ```text
 six pinned shotdetail Parquet seasons
   -> hash, schema, and row validation
   -> atomic normalized PostgreSQL ingestion
   -> local feature dataset + whole-game split manifest
-  -> probability model and calibration (next)
+  -> locally locked probability model and calibration workflow
   -> FastAPI and React analytics experience (later)
 ```
 
@@ -61,5 +62,25 @@ make check
 make test
 ```
 
+The modeling commands deliberately separate development from the final held-out
+season. `make develop-model` uses only 2018-19 through 2022-23 and creates a
+local `pending_review` record. After independent coordinator review,
+`make lock-model` validates and atomically authorizes that exact bundle.
+`make verify-model` checks the record and bundle without reading test rows.
+`make evaluate-model` is the single guarded 2023-24 evaluation and refuses to
+overwrite an existing test report.
+
+## Held-out 2023-24 evaluation
+
+The locked model was evaluated once on 218,701 shots from 1,230 whole games
+(2023-10-24 through 2024-04-14). These local generated outputs remain ignored;
+the table is a concise record of that fixed held-out evaluation, not a claim of
+production readiness or causal shot quality.
+
+| Model | Log loss | Brier | ROC-AUC | 10-bin ECE |
+| --- | ---: | ---: | ---: | ---: |
+| HGB, lr=0.05/leaves=15, sigmoid | 0.637055 | 0.224358 | 0.657832 | 0.006517 |
+| Locked logistic, C=1, isotonic | 0.642787 | 0.226538 | 0.650390 | 0.006944 |
+
 See [docs/architecture.md](docs/architecture.md) for the data contract,
-relational design, and leakage boundary.
+relational design, leakage boundary, and frozen modeling protocol.

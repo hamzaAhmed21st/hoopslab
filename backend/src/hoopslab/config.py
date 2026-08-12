@@ -23,6 +23,7 @@ class Settings(BaseSettings):
     )
     source_cache_dir: Path = Path("data/raw")
     artifact_dir: Path = Path("data/processed")
+    modeling_artifact_dir: Path = Path("artifacts/modeling")
 
     @model_validator(mode="after")
     def database_must_use_postgresql(self) -> Self:

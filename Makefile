@@ -1,4 +1,4 @@
-.PHONY: sync check format test test-unit source-validate ingest quality features db-up db-down migrate
+.PHONY: sync check format test test-unit source-validate ingest quality features develop-model lock-model evaluate-model verify-model db-up db-down migrate
 
 sync:
 	uv sync --locked --all-groups
@@ -29,6 +29,18 @@ quality:
 
 features:
 	uv run python scripts/build_features.py
+
+develop-model:
+	uv run python scripts/develop_model.py
+
+lock-model:
+	uv run python scripts/lock_model.py
+
+evaluate-model:
+	uv run python scripts/evaluate_model.py
+
+verify-model:
+	uv run python scripts/verify_model.py
 
 db-up:
 	docker compose up -d --wait db

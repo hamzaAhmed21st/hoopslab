@@ -7,6 +7,7 @@ requires-python = ">=3.13,<3.14"
 dependencies = [
     "alembic>=1.16,<2",
     "httpx>=0.28,<1",
+    "pandas>=2.2,<3",
     "psycopg[binary]>=3.2,<4",
     "pyarrow>=21,<24",
     "pydantic>=2.11,<3",
@@ -50,5 +51,15 @@ strict = true
 files = ["backend/src", "backend/tests", "scripts"]
 
 [[tool.mypy.overrides]]
-module = ["pyarrow", "pyarrow.*"]
+module = [
+    "joblib",
+    "pandas",
+    "pandas.*",
+    "pyarrow",
+    "pyarrow.*",
+    "sklearn",
+    "sklearn.*",
+    "scipy",
+    "scipy.*",
+]
 ignore_missing_imports = true
