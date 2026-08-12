@@ -1,4 +1,4 @@
-.PHONY: sync check format test test-unit source-validate ingest quality features develop-model lock-model evaluate-model verify-model db-up db-down migrate
+.PHONY: sync check format test test-unit source-validate ingest quality features develop-model lock-model evaluate-model verify-model api db-up db-down migrate
 
 sync:
 	uv sync --locked --all-groups
@@ -41,6 +41,9 @@ evaluate-model:
 
 verify-model:
 	uv run python scripts/verify_model.py
+
+api:
+	uv run uvicorn hoopslab.api.app:app --host 0.0.0.0 --port 8000
 
 db-up:
 	docker compose up -d --wait db

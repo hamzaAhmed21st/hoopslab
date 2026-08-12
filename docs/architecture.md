@@ -2,10 +2,10 @@
 
 ## Current boundary
 
-HoopsLab currently provides a reproducible path from six immutable external
-shot snapshots through normalized PostgreSQL storage to local feature and split
-artifacts and a locked local model. FastAPI and React product surfaces are
-deliberate later boundaries.
+HoopsLab provides a reproducible path from six immutable external shot
+snapshots through normalized PostgreSQL storage to local feature and split
+artifacts, a locked local model, and a read-only FastAPI serving boundary.
+React remains a deliberate later boundary.
 
 ```text
 Pinned revision + six asset SHA-256 values
@@ -219,6 +219,48 @@ Development split validation reads only the leading, chronologically ordered
 game object. This boundary relies on the frozen split writer's `sort_keys=True`
 key order and chronological game ordering; the full split-file SHA-256 remains
 part of the locked artifact identity.
+
+## API runtime and analytics boundary
+
+FastAPI lifespan creates one synchronous SQLAlchemy engine with connection
+pre-ping and one long-lived model runtime. Startup reads the configured bundle,
+manifest, selection lock, and final report once. It verifies cross-record
+identities, locked/no-development-test-access state, the exact artifact filename
+and SHA-256, modeling and feature contract versions, ordered 13-field feature
+list, installed scikit-learn version, exact selected and tuned identifiers and
+configuration, development and held-out protocol segments, bundle shape, and
+the calibrated/frozen pipeline, preprocessing, HGB parameters, feature names,
+and classes. A finite in-range sanity prediction completes the check. Public
+family, calibration, and season metadata is derived from those validated
+records. Only the selected HGB plus sigmoid estimator is retained for serving;
+the comparator is not an API runtime. Shutdown disposes the engine.
+
+Missing, corrupt, unlocked, or incompatible ignored artifacts leave the process
+live but model-unavailable. `/health/live` is process-only. `/health/ready`
+requires the validated model plus a successful PostgreSQL `SELECT 1`; it returns
+only a generic 503 otherwise. Model-dependent routes also return generic 503
+responses, while internal artifact diagnostics, paths, database URLs, raw
+records, and exceptions never enter public responses. A fresh clone therefore
+starts honestly in a live/not-ready state and never retrains or downloads a
+replacement model.
+
+Prediction requests expose the 12 source/context fields and derive shot angle
+from coordinates server-side. Pydantic rejects extra fields, coercion,
+non-finite/out-of-court values, invalid shot/season types, and impossible
+overtime clocks. Unknown action and zone categories remain allowed because the
+locked ordinal encoder maps them to its trained unknown representation. Batch
+requests contain 1–500 shots and use one vectorized estimator invocation.
+
+Player search uses a bounded case-insensitive substring query and stable
+lowercase-name/source-ID ordering; blank search text means no name filter.
+Summary and shot-page routes first verify player identity independently, share a
+small typed filter set, and select only database fields required for model input
+or dashboard output. Summary scoring fetches at most 10,001 rows and rejects a
+population above 10,000 before inference. Shot pages are ordered by game date,
+game ID, then event ID descending, with offset capped at 10,000 and page size at
+250. Each nonempty population/page is scored in one vectorized call. Sessions
+always close, no predictions are persisted, and the existing player/game index
+supports the access path, so no migration or speculative index was added.
 
 ## Generated artifacts
 

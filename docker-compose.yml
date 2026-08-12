@@ -16,5 +16,29 @@ services:
     volumes:
       - hoopslab-postgres:/var/lib/postgresql/data
 
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      HOOPSLAB_DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-hoopslab}:${POSTGRES_PASSWORD:-hoopslab}@db:5432/${POSTGRES_DB:-hoopslab}
+      HOOPSLAB_MODEL_ARTIFACT_PATH: /app/artifacts/modeling/shot-quality-model.joblib
+      HOOPSLAB_MODEL_MANIFEST_PATH: /app/artifacts/modeling/model-manifest.json
+      HOOPSLAB_MODEL_LOCK_PATH: /app/artifacts/modeling/selection-lock.json
+      HOOPSLAB_MODEL_REPORT_PATH: /app/artifacts/modeling/final-test-report.json
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "${API_PORT:-8000}:8000"
+    volumes:
+      - ./artifacts/modeling:/app/artifacts/modeling:ro
+    healthcheck:
+      test: ["CMD", "uv", "run", "--no-sync", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/live', timeout=2)"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+
 volumes:
   hoopslab-postgres:

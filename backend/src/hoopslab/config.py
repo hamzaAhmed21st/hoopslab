@@ -24,6 +24,10 @@ class Settings(BaseSettings):
     source_cache_dir: Path = Path("data/raw")
     artifact_dir: Path = Path("data/processed")
     modeling_artifact_dir: Path = Path("artifacts/modeling")
+    model_artifact_path: Path = Path("artifacts/modeling/shot-quality-model.joblib")
+    model_manifest_path: Path = Path("artifacts/modeling/model-manifest.json")
+    model_lock_path: Path = Path("artifacts/modeling/selection-lock.json")
+    model_report_path: Path = Path("artifacts/modeling/final-test-report.json")
 
     @model_validator(mode="after")
     def database_must_use_postgresql(self) -> Self:

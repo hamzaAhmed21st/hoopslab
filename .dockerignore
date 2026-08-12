@@ -1,0 +1,15 @@
+.git
+.venv
+.env
+.codex
+.local-notes
+.mypy_cache
+.pytest_cache
+.ruff_cache
+AGENTS.md
+PLANS.md
+artifacts
+data
+**/__pycache__
+*.prompt.md
+*.agent.md

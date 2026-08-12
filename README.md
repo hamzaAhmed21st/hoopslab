@@ -4,8 +4,8 @@ HoopsLab is a basketball analytics project building toward a contextual NBA
 shot-quality model and an interactive shot-analysis product. It currently
 implements revision/hash-pinned multi-season ingestion, normalized PostgreSQL
 storage, leakage-aware feature construction, deterministic chronological
-splits, and a leakage-guarded shot-quality modeling workflow. It does not yet
-serve an API/dashboard.
+splits, a locked shot-quality model, and a read-only FastAPI inference and
+player-analytics service. The React dashboard remains a later boundary.
 
 ```text
 six pinned shotdetail Parquet seasons
@@ -13,11 +13,12 @@ six pinned shotdetail Parquet seasons
   -> atomic normalized PostgreSQL ingestion
   -> local feature dataset + whole-game split manifest
   -> locally locked probability model and calibration workflow
-  -> FastAPI and React analytics experience (later)
+  -> validated FastAPI inference + actual-vs-expected analytics
+  -> React analytics experience (later)
 ```
 
 The initial stack is Python 3.13, uv, Pydantic, PyArrow, SQLAlchemy/Alembic,
-PostgreSQL, scikit-learn, pytest, Ruff, and mypy.
+PostgreSQL, scikit-learn, FastAPI, pytest, Ruff, and mypy.
 
 ## Data source
 
@@ -70,6 +71,29 @@ local `pending_review` record. After independent coordinator review,
 `make evaluate-model` is the single guarded 2023-24 evaluation and refuses to
 overwrite an existing test report.
 
+## Local API
+
+The API serves only an already locked local model. Its ignored model bundle,
+manifest, selection lock, and final report must exist under
+`artifacts/modeling/`; startup never downloads, retrains, or substitutes a
+model. A fresh clone can still start and answer liveness, but readiness and
+model-dependent routes remain unavailable until those artifacts are supplied by
+the documented frozen modeling workflow above.
+
+Run the API on the host or with the local PostgreSQL stack:
+
+```bash
+make api
+# or
+docker compose up --build --wait db api
+```
+
+The service listens on `http://localhost:8000`. It exposes liveness/readiness,
+safe locked-model metadata, strict single and batch prediction (maximum 500),
+bounded player search, actual-versus-expected player shot quality (maximum
+10,000 attempts), and newest-first paginated shot data (maximum 250 per page).
+Generated OpenAPI is available at `/docs` and `/openapi.json`.
+
 ## Held-out 2023-24 evaluation
 
 The locked model was evaluated once on 218,701 shots from 1,230 whole games
@@ -83,4 +107,5 @@ production readiness or causal shot quality.
 | Locked logistic, C=1, isotonic | 0.642787 | 0.226538 | 0.650390 | 0.006944 |
 
 See [docs/architecture.md](docs/architecture.md) for the data contract,
-relational design, leakage boundary, and frozen modeling protocol.
+relational design, leakage boundary, frozen modeling protocol, and API runtime
+semantics.
