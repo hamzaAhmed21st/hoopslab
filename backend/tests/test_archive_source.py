@@ -10,6 +10,7 @@ import pyarrow.parquet as pq
 import pytest
 
 from hoopslab.sources.archive import (
+    SOURCE_MANIFEST,
     SourceAsset,
     SourceIntegrityError,
     SourceSchemaError,
@@ -17,6 +18,7 @@ from hoopslab.sources.archive import (
     file_sha256,
     iter_normalized_shots,
     validate_asset,
+    validate_manifest,
 )
 
 
@@ -59,6 +61,17 @@ def test_parquet_adapter_rejects_schema_drift(tmp_path: Path) -> None:
         list(iter_normalized_shots(path))
 
 
+def test_parquet_adapter_rejects_incompatible_physical_type(
+    tmp_path: Path,
+    archive_row_factory: Callable[..., dict[str, Any]],
+) -> None:
+    path = tmp_path / "wrong-type.parquet"
+    _write_parquet(path, [archive_row_factory(GAME_ID="22300001")])
+
+    with pytest.raises(SourceSchemaError, match="incompatible physical types"):
+        list(iter_normalized_shots(path))
+
+
 def test_downloader_writes_only_hash_verified_bytes(tmp_path: Path) -> None:
     content = b"bounded parquet stand-in"
     source_file = tmp_path / "expected.bin"
@@ -89,3 +102,24 @@ def test_downloader_does_not_publish_bad_bytes(tmp_path: Path) -> None:
     assert not destination.exists()
     assert not destination.with_suffix(".parquet.part").exists()
     client.close()
+
+
+def test_manifest_covers_frozen_modeling_cohort() -> None:
+    validate_manifest()
+
+    assert [asset.season_start for asset in SOURCE_MANIFEST] == list(range(2018, 2024))
+    assert all(
+        asset.revision == SOURCE_MANIFEST[0].revision for asset in SOURCE_MANIFEST
+    )
+    assert all(asset.expected_rows is not None for asset in SOURCE_MANIFEST)
+    assert len({asset.sha256 for asset in SOURCE_MANIFEST}) == 6
+
+
+def test_manifest_rejects_incomplete_cohort() -> None:
+    with pytest.raises(ValueError, match="every season"):
+        validate_manifest(SOURCE_MANIFEST[:-1])
+
+
+def test_source_asset_rejects_an_unsupported_runtime_format() -> None:
+    with pytest.raises(ValueError, match="file_format"):
+        SourceAsset(2023, "rg", "0" * 64, file_format="csv")  # type: ignore[arg-type]

@@ -22,6 +22,7 @@ class Settings(BaseSettings):
         default="postgresql+psycopg://hoopslab:hoopslab@localhost:5432/hoopslab"
     )
     source_cache_dir: Path = Path("data/raw")
+    artifact_dir: Path = Path("data/processed")
 
     @model_validator(mode="after")
     def database_must_use_postgresql(self) -> Self:

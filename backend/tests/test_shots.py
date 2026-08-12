@@ -41,6 +41,16 @@ def test_overtime_clock_cannot_exceed_five_minutes(
         ArchiveShotRow.model_validate(raw)
 
 
+def test_regulation_clock_accepts_exact_period_start(
+    archive_row_factory: Callable[..., dict[str, Any]],
+) -> None:
+    row = ArchiveShotRow.model_validate(
+        archive_row_factory(MINUTES_REMAINING=12, SECONDS_REMAINING=0)
+    )
+
+    assert normalize_shot(row).seconds_remaining == 720
+
+
 def test_coordinate_outside_legacy_court_is_rejected(
     archive_row_factory: Callable[..., dict[str, Any]],
 ) -> None:

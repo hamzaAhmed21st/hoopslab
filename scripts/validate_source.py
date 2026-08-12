@@ -3,7 +3,12 @@
 from argparse import ArgumentParser
 
 from hoopslab.config import get_settings
-from hoopslab.sources.archive import VALIDATION_ASSET, fetch_asset, validate_asset
+from hoopslab.sources.archive import (
+    SOURCE_MANIFEST,
+    fetch_asset,
+    validate_asset,
+    validate_manifest,
+)
 
 
 def main() -> None:
@@ -13,30 +18,23 @@ def main() -> None:
         "--sample-size",
         type=int,
         default=500,
-        help="number of rows to parse through the domain contract (default: 500)",
+        help="rows per season to parse through the domain contract (default: 500)",
     )
     args = parser.parse_args()
 
     settings = get_settings()
-    destination = (
-        settings.source_cache_dir / "nba-data-archive" / "shotdetail" / "2023.parquet"
-    )
-    path = fetch_asset(VALIDATION_ASSET, destination)
-    report = validate_asset(VALIDATION_ASSET, path, sample_size=args.sample_size)
-
-    print(f"source_revision={VALIDATION_ASSET.url.split('/resolve/')[1].split('/')[0]}")
-    print(f"path={report.path}")
-    print(f"sha256={report.sha256}")
-    print(f"total_rows={report.total_rows}")
-    print(f"sample_rows={report.sample_rows}")
-    print(
-        "sample_entities="
-        f"games:{report.sample_games},players:{report.sample_players},"
-        f"teams:{report.sample_teams}"
-    )
-    print(f"sample_outcomes=made:{report.made},missed:{report.missed}")
-    print(f"sample_loc_x_tenths_ft={report.coordinate_x_range}")
-    print(f"sample_loc_y_tenths_ft={report.coordinate_y_range}")
+    validate_manifest()
+    print(f"source_revision={SOURCE_MANIFEST[0].revision}")
+    for asset in SOURCE_MANIFEST:
+        path = fetch_asset(asset, asset.cache_path(settings.source_cache_dir))
+        report = validate_asset(asset, path, sample_size=args.sample_size)
+        print(
+            f"season={asset.season_label} path={report.path} sha256={report.sha256} "
+            f"rows={report.total_rows} sample={report.sample_rows} "
+            f"games={report.sample_games} players={report.sample_players} "
+            f"teams={report.sample_teams} made={report.made} missed={report.missed} "
+            f"x={report.coordinate_x_range} y={report.coordinate_y_range}"
+        )
     print("validation=ok")
 
 

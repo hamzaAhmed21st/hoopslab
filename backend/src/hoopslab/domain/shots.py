@@ -18,7 +18,7 @@ class ArchiveShotRow(BaseModel):
     team_id: int = Field(alias="TEAM_ID", gt=0)
     team_name: str = Field(alias="TEAM_NAME", min_length=1)
     period: int = Field(alias="PERIOD", ge=1, le=20)
-    minutes_remaining: int = Field(alias="MINUTES_REMAINING", ge=0, le=11)
+    minutes_remaining: int = Field(alias="MINUTES_REMAINING", ge=0, le=12)
     seconds_remaining: int = Field(alias="SECONDS_REMAINING", ge=0, le=59)
     event_type: Literal["Made Shot", "Missed Shot"] = Field(alias="EVENT_TYPE")
     action_type: str = Field(alias="ACTION_TYPE", min_length=1)

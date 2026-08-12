@@ -42,3 +42,61 @@ def archive_row_factory() -> Callable[..., dict[str, Any]]:
         return row
 
     return build
+
+
+@pytest.fixture
+def resolved_season_rows_factory(
+    archive_row_factory: Callable[..., dict[str, Any]],
+) -> Callable[[int], list[dict[str, Any]]]:
+    """Build three synthetic games whose stable team codes are resolvable."""
+
+    def build(season_start: int = 2023) -> list[dict[str, Any]]:
+        games = (
+            (9001, season_start * 10_000 + 1024, 1, "Alpha", 2, "Beta", "AAA", "BBB"),
+            (9002, season_start * 10_000 + 1025, 1, "Alpha", 3, "Gamma", "AAA", "CCC"),
+            (9003, season_start * 10_000 + 1026, 2, "Beta", 3, "Gamma", "BBB", "CCC"),
+        )
+        rows: list[dict[str, Any]] = []
+        for (
+            game_id,
+            game_date,
+            home_id,
+            home_name,
+            away_id,
+            away_name,
+            home,
+            away,
+        ) in games:
+            rows.extend(
+                [
+                    archive_row_factory(
+                        GAME_ID=game_id,
+                        GAME_EVENT_ID=10,
+                        GAME_DATE=game_date,
+                        TEAM_ID=home_id,
+                        TEAM_NAME=home_name,
+                        PLAYER_ID=home_id * 100,
+                        PLAYER_NAME=f"{home_name} Shooter",
+                        HTM=home,
+                        VTM=away,
+                        _season=season_start,
+                    ),
+                    archive_row_factory(
+                        GAME_ID=game_id,
+                        GAME_EVENT_ID=11,
+                        GAME_DATE=game_date,
+                        TEAM_ID=away_id,
+                        TEAM_NAME=away_name,
+                        PLAYER_ID=away_id * 100,
+                        PLAYER_NAME=f"{away_name} Shooter",
+                        HTM=home,
+                        VTM=away,
+                        _season=season_start,
+                        EVENT_TYPE="Missed Shot",
+                        SHOT_MADE_FLAG=0,
+                    ),
+                ]
+            )
+        return rows
+
+    return build
