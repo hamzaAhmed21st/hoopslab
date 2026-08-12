@@ -40,5 +40,21 @@ services:
       retries: 10
       start_period: 5s
 
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "${FRONTEND_PORT:-5173}:80"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1/frontend-health"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 3s
+
 volumes:
   hoopslab-postgres:

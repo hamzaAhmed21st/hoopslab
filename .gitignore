@@ -26,8 +26,9 @@ models/
 mlruns/
 .cache/
 
-# Future frontend dependencies and builds
+# Frontend dependencies, stores, and builds
 node_modules/
+.pnpm-store/
 frontend/dist/
 frontend/.vite/
 

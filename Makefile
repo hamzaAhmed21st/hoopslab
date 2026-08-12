@@ -1,4 +1,4 @@
-.PHONY: sync check format test test-unit source-validate ingest quality features develop-model lock-model evaluate-model verify-model api db-up db-down migrate
+.PHONY: sync check format test test-unit source-validate ingest quality features develop-model lock-model evaluate-model verify-model api frontend-sync frontend frontend-check stack-up db-up db-down migrate
 
 sync:
 	uv sync --locked --all-groups
@@ -44,6 +44,21 @@ verify-model:
 
 api:
 	uv run uvicorn hoopslab.api.app:app --host 0.0.0.0 --port 8000
+
+frontend-sync:
+	cd frontend && CI=true pnpm install --frozen-lockfile
+
+frontend:
+	cd frontend && pnpm dev
+
+frontend-check:
+	cd frontend && CI=true pnpm lint
+	cd frontend && CI=true pnpm typecheck
+	cd frontend && CI=true pnpm test
+	cd frontend && CI=true pnpm build
+
+stack-up:
+	docker compose up --build --wait
 
 db-up:
 	docker compose up -d --wait db

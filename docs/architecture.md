@@ -5,7 +5,7 @@
 HoopsLab provides a reproducible path from six immutable external shot
 snapshots through normalized PostgreSQL storage to local feature and split
 artifacts, a locked local model, and a read-only FastAPI serving boundary.
-React remains a deliberate later boundary.
+The React dashboard is a separate typed read-only client of that boundary.
 
 ```text
 Pinned revision + six asset SHA-256 values
@@ -261,6 +261,45 @@ game ID, then event ID descending, with offset capped at 10,000 and page size at
 250. Each nonempty population/page is scored in one vectorized call. Sessions
 always close, no predictions are persisted, and the existing player/game index
 supports the access path, so no migration or speculative index was added.
+
+## Dashboard boundary
+
+The recruiter-facing dashboard is a strict TypeScript React/Vite application.
+TanStack Query owns remote request state while component state contains only the
+selected player ID, one shared filter object, and shot-page offset. Changing the
+player or any filter resets that offset. Readiness, model metadata, player
+search, full-population summary, and shot-page requests have independent
+loading, empty, error, and retry behavior; query keys include the complete
+player/filter/page scope so prior-scope results are never presented as current.
+The browser client uses native `fetch`, validates response shapes at its trust
+boundary, and converts backend failures to brief public messages. In particular,
+503 means `Analytics not ready`, and a summary 422 asks the user to refine the
+population rather than exposing response bodies.
+
+Player discovery is a 275 ms debounced ARIA combobox. Searches start at two
+characters, request at most ten results, and select by stable numeric player ID.
+The visible product filters are deliberately narrower than the API: season
+(default 2023-24, with all six seasons available), shot type, and nominal
+home/away team designation. The summary always describes the entire filtered
+population. The chart and table instead share one newest-first 100-shot page,
+state its exact range and total, and paginate without changing summary scope.
+
+The primary visualization is a code-native responsive half-court SVG, not a
+charting abstraction. Source coordinates are feet with the basket at `(0, 0)`
+and positive y running away from it. The physical view is x `[-25, 25]`, y
+`[-4.75, 42.25]`; the transform is
+`x = left + ((x + 25) / 50) * width` and
+`y = top + ((42.25 - y) / 47) * height`. Coordinates are never clamped. Marks
+outside that view remain in the accessible table and are omitted only from the
+court with an explicit current-page count. Filled circles distinguish makes
+from x-shaped misses without relying on color.
+
+The production frontend image builds the frozen pnpm graph and serves static
+assets from nginx. nginx proxies `/api` and `/health` to the FastAPI container,
+giving the browser a same-origin surface. Compose waits for API process health,
+but the UI still treats model/database readiness independently: missing ignored
+artifacts can leave the stack live and the dashboard available while analytics
+remain unavailable.
 
 ## Generated artifacts
 

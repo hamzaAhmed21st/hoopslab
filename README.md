@@ -5,7 +5,7 @@ shot-quality model and an interactive shot-analysis product. It currently
 implements revision/hash-pinned multi-season ingestion, normalized PostgreSQL
 storage, leakage-aware feature construction, deterministic chronological
 splits, a locked shot-quality model, and a read-only FastAPI inference and
-player-analytics service. The React dashboard remains a later boundary.
+player-analytics service with a responsive React dashboard.
 
 ```text
 six pinned shotdetail Parquet seasons
@@ -14,11 +14,12 @@ six pinned shotdetail Parquet seasons
   -> local feature dataset + whole-game split manifest
   -> locally locked probability model and calibration workflow
   -> validated FastAPI inference + actual-vs-expected analytics
-  -> React analytics experience (later)
+  -> React player search, shot-quality summary, court, and shot table
 ```
 
 The initial stack is Python 3.13, uv, Pydantic, PyArrow, SQLAlchemy/Alembic,
-PostgreSQL, scikit-learn, FastAPI, pytest, Ruff, and mypy.
+PostgreSQL, scikit-learn, FastAPI, pytest, Ruff, mypy, React, strict TypeScript,
+Vite, pnpm, TanStack Query, Vitest, and Testing Library.
 
 ## Data source
 
@@ -38,7 +39,8 @@ deployment.
 
 ## Local setup
 
-Requirements: uv, Docker with Compose, and Git.
+Requirements: uv, Docker with Compose, Git, Node.js 22 or newer, and pnpm
+11.20.0.
 
 ```bash
 uv sync --locked --all-groups
@@ -61,6 +63,8 @@ Run the local checks with:
 ```bash
 make check
 make test
+make frontend-sync
+make frontend-check
 ```
 
 The modeling commands deliberately separate development from the final held-out
@@ -93,6 +97,36 @@ safe locked-model metadata, strict single and batch prediction (maximum 500),
 bounded player search, actual-versus-expected player shot quality (maximum
 10,000 attempts), and newest-first paginated shot data (maximum 250 per page).
 Generated OpenAPI is available at `/docs` and `/openapi.json`.
+
+## Local dashboard
+
+The dashboard consumes only the API's read-only health, model, player-search,
+shot-quality, and shot-page routes. Start the API and Vite development server in
+separate terminals:
+
+```bash
+make api
+make frontend
+```
+
+Open `http://localhost:5173`. Vite proxies `/api` and `/health` to the API on
+port 8000. The dashboard searches real player IDs, defaults to the 2023-24
+season, and applies one shared season/shot-type/home-designation scope to the
+full-population summary and newest-first shot page. The court and accessible
+table show the newest 100 attempts at a time; the interface states that this
+page is narrower than the summary and discloses any current-page coordinates
+outside the physical half-court view.
+
+Run the full local stack with:
+
+```bash
+make stack-up
+```
+
+The frontend is served at `http://localhost:5173`; nginx proxies its same-origin
+API and health requests to the `api` service. A fresh clone without ignored
+model artifacts still serves the interface and process liveness, while the UI
+honestly reports `Analytics not ready` until the locked artifacts are present.
 
 ## Held-out 2023-24 evaluation
 
