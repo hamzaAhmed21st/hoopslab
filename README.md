@@ -1,11 +1,18 @@
 # HoopsLab
 
-HoopsLab is a basketball analytics project building toward a contextual NBA
-shot-quality model and an interactive shot-analysis product. It currently
-implements revision/hash-pinned multi-season ingestion, normalized PostgreSQL
-storage, leakage-aware feature construction, deterministic chronological
-splits, a locked shot-quality model, and a read-only FastAPI inference and
-player-analytics service with a responsive React dashboard.
+HoopsLab is an end-to-end basketball analytics and machine-learning project
+built from six completed NBA regular seasons (2018-19 through 2023-24). It
+combines reproducible, hash-pinned PostgreSQL ingestion; leakage-aware
+attempt-time features and chronological whole-game splits; a locked contextual
+shot-quality model served by FastAPI; and a React actual-versus-expected shot
+chart.
+
+Expected FG% is the model's contextual make probability for a shot—not a causal
+estimate of player value, defender impact, or shot selection.
+
+![HoopsLab dashboard showing LeBron James actual-versus-expected shooting and half-court shot locations](docs/images/hoopslab-dashboard.png)
+
+## Architecture
 
 ```text
 six pinned shotdetail Parquet seasons
@@ -17,11 +24,37 @@ six pinned shotdetail Parquet seasons
   -> React player search, shot-quality summary, court, and shot table
 ```
 
-The initial stack is Python 3.13, uv, Pydantic, PyArrow, SQLAlchemy/Alembic,
-PostgreSQL, scikit-learn, FastAPI, pytest, Ruff, mypy, React, strict TypeScript,
-Vite, pnpm, TanStack Query, Vitest, and Testing Library.
+Ingestion validates the pinned revision, exact asset SHA-256, schema, and every
+row before atomically writing a normalized season. Feature generation keeps the
+binary outcome and identity/debug columns outside the 13-field model contract.
+The estimator is trained, calibrated, selected, and finally evaluated across
+chronologically separated seasons without splitting a game across boundaries.
 
-## Data source
+See [docs/architecture.md](docs/architecture.md) for the relational contract,
+leakage boundary, frozen modeling protocol, API runtime checks, and dashboard
+coordinate semantics.
+
+## Held-out result
+
+The locked model was evaluated once on 218,701 shots from 1,230 whole games in
+the held-out 2023-24 regular season. These measurements describe that fixed
+evaluation; they are not a production-readiness or causal-performance claim.
+
+| Model | Log loss | Brier | ROC-AUC | 10-bin ECE |
+| --- | ---: | ---: | ---: | ---: |
+| HGB, lr=0.05/leaves=15, sigmoid | 0.637055 | 0.224358 | 0.657832 | 0.006517 |
+| Locked logistic, C=1, isotonic | 0.642787 | 0.226538 | 0.650390 | 0.006944 |
+
+## Stack
+
+- Backend: Python 3.13, uv, Pydantic, PyArrow, SQLAlchemy, Alembic, PostgreSQL,
+  scikit-learn, FastAPI, pytest, Ruff, and mypy.
+- Frontend: React, strict TypeScript, Vite, pnpm, TanStack Query, Vitest, and
+  Testing Library.
+- Runtime: separate FastAPI and nginx images composed with PostgreSQL; nginx
+  provides the dashboard's same-origin `/api` and `/health` proxy.
+
+## Data provenance
 
 The source contract uses completed-season `shotdetail` Parquet snapshots from
 the [NBA Data Archive](https://huggingface.co/datasets/cdechoch/nba-data-archive),
@@ -31,115 +64,71 @@ and file hashes for the completed 2018-19 through 2023-24 regular seasons are
 pinned in code before they are accepted. External source data and generated
 feature/quality artifacts remain in ignored local directories.
 
-The underlying statistics originate from NBA public services. HoopsLab is a
-non-commercial portfolio project, attributes NBA.com, and does not redistribute
-the dataset, logos, video, or play-by-play. Review the current
-[NBA.com Terms of Use](https://www.nba.com/termsofuse) before reuse or public
-deployment.
+The pinned revision and file hashes define which inputs HoopsLab accepts; raw
+data and generated datasets remain outside Git. The underlying statistics
+originate from NBA public services. HoopsLab is a non-commercial portfolio
+project, attributes NBA.com, and does not redistribute the dataset, logos,
+video, or play-by-play. Review the current
+[NBA.com Terms of Use](https://www.nba.com/termsofuse) before reuse.
 
-## Local setup
+## Run locally
 
-Requirements: uv, Docker with Compose, Git, Node.js 22 or newer, and pnpm
-11.20.0.
+Requirements: uv, Docker with Compose, Git, Node.js 24 LTS, and pnpm 11.20.0.
 
 ```bash
 uv sync --locked --all-groups
+cd frontend && CI=true pnpm install --frozen-lockfile && cd ..
 cp .env.example .env
 docker compose up -d --wait db
 uv run alembic upgrade head
+```
+
+To build the local database from the pinned source contract:
+
+```bash
 uv run python scripts/validate_source.py
 uv run python scripts/ingest.py
 uv run python scripts/data_quality.py
 uv run python scripts/build_features.py
 ```
 
-The validation command downloads six pinned regular-season files (about 13 MB
-total), verifies every SHA-256 and schema, and parses bounded samples. Ingestion
-then validates every row and commits each season atomically. Re-running the same
-source records a safe skip rather than duplicating basketball data.
-
-Run the local checks with:
-
-```bash
-make check
-make test
-make frontend-sync
-make frontend-check
-```
-
-The modeling commands deliberately separate development from the final held-out
-season. `make develop-model` uses only 2018-19 through 2022-23 and creates a
-local `pending_review` record. After independent coordinator review,
-`make lock-model` validates and atomically authorizes that exact bundle.
-`make verify-model` checks the record and bundle without reading test rows.
-`make evaluate-model` is the single guarded 2023-24 evaluation and refuses to
-overwrite an existing test report.
-
-## Local API
-
-The API serves only an already locked local model. Its ignored model bundle,
-manifest, selection lock, and final report must exist under
-`artifacts/modeling/`; startup never downloads, retrains, or substitutes a
-model. A fresh clone can still start and answer liveness, but readiness and
-model-dependent routes remain unavailable until those artifacts are supplied by
-the documented frozen modeling workflow above.
-
-Run the API on the host or with the local PostgreSQL stack:
-
-```bash
-make api
-# or
-docker compose up --build --wait db api
-```
-
-The service listens on `http://localhost:8000`. It exposes liveness/readiness,
-safe locked-model metadata, strict single and batch prediction (maximum 500),
-bounded player search, actual-versus-expected player shot quality (maximum
-10,000 attempts), and newest-first paginated shot data (maximum 250 per page).
-Generated OpenAPI is available at `/docs` and `/openapi.json`.
-
-## Local dashboard
-
-The dashboard consumes only the API's read-only health, model, player-search,
-shot-quality, and shot-page routes. Start the API and Vite development server in
-separate terminals:
+The locked model bundle and its lock/evaluation records are deliberately
+ignored. When they are available under `artifacts/modeling/`, run the API and
+dashboard in separate terminals:
 
 ```bash
 make api
 make frontend
 ```
 
-Open `http://localhost:5173`. Vite proxies `/api` and `/health` to the API on
-port 8000. The dashboard searches real player IDs, defaults to the 2023-24
-season, and applies one shared season/shot-type/home-designation scope to the
-full-population summary and newest-first shot page. The court and accessible
-table show the newest 100 attempts at a time; the interface states that this
-page is narrower than the summary and discloses any current-page coordinates
-outside the physical half-court view.
-
-Run the full local stack with:
+Open the dashboard at `http://localhost:5173` and the generated API documentation
+at `http://localhost:8000/docs`. To build the containerized stack instead:
 
 ```bash
 make stack-up
 ```
 
-The frontend is served at `http://localhost:5173`; nginx proxies its same-origin
-API and health requests to the `api` service. A fresh clone without ignored
-model artifacts still serves the interface and process liveness, while the UI
-honestly reports `Analytics not ready` until the locked artifacts are present.
+Without the ignored locked artifacts, the API still starts and answers
+`/health/live`, while readiness and model-dependent routes honestly return 503.
+It never downloads, retrains, or substitutes a model at startup.
 
-## Held-out 2023-24 evaluation
+## Verification
 
-The locked model was evaluated once on 218,701 shots from 1,230 whole games
-(2023-10-24 through 2024-04-14). These local generated outputs remain ignored;
-the table is a concise record of that fixed held-out evaluation, not a claim of
-production readiness or causal shot quality.
+```bash
+make check
+make test              # real PostgreSQL integration tests after migration
+make frontend-check
+docker compose config
+```
 
-| Model | Log loss | Brier | ROC-AUC | 10-bin ECE |
-| --- | ---: | ---: | ---: | ---: |
-| HGB, lr=0.05/leaves=15, sigmoid | 0.637055 | 0.224358 | 0.657832 | 0.006517 |
-| Locked logistic, C=1, isotonic | 0.642787 | 0.226538 | 0.650390 | 0.006944 |
+CI repeats the locked backend/frontend checks against PostgreSQL and builds both
+runtime images without requiring raw NBA data or the ignored locked model.
 
-See [docs/architecture.md](docs/architecture.md) for the data contract,
-relational design, leakage boundary, frozen modeling protocol, and API runtime
-semantics.
+## Limitations
+
+The model deliberately excludes player, team, and opponent identities and has
+no score, defender, lineup, or verified venue context. Its discrimination is
+weaker for three-point and midrange attempts, and `shooter_is_home` is only the
+nominal schedule role during the 2020 bubble. Dashboard comparisons are
+descriptive actual-versus-contextual-expected summaries, not causal player
+rankings.
