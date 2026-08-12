@@ -1,0 +1,92 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Backend and PostgreSQL
+    runs-on: ubuntu-latest
+    env:
+      HOOPSLAB_DATABASE_URL: postgresql+psycopg://hoopslab:hoopslab@localhost:5432/hoopslab_ci
+      HOOPSLAB_TEST_DATABASE_URL: postgresql+psycopg://hoopslab:hoopslab@localhost:5432/hoopslab_ci
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: hoopslab_ci
+          POSTGRES_USER: hoopslab
+          POSTGRES_PASSWORD: hoopslab
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U hoopslab -d hoopslab_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-python@v7.0.0
+        with:
+          python-version: "3.13"
+      - uses: astral-sh/setup-uv@v10.0.0
+        with:
+          version: "0.12.1"
+          enable-cache: true
+      - name: Install locked dependencies
+        run: |
+          uv lock --check
+          uv sync --locked --all-groups
+      - name: Lint and type-check
+        run: |
+          uv run ruff check .
+          uv run ruff format --check .
+          uv run mypy
+      - name: Verify migrations
+        run: |
+          uv run alembic upgrade head
+          uv run alembic current --check-heads
+          uv run alembic check
+      - name: Test with PostgreSQL
+        run: uv run pytest
+
+  frontend:
+    name: Frontend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: pnpm/action-setup@v6.0.8
+        with:
+          package_json_file: frontend/package.json
+      - uses: actions/setup-node@v7.0.0
+        with:
+          node-version: "24"
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+      - name: Install frozen dependencies
+        run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build
+
+  containers:
+    name: Container builds
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - name: Validate Compose
+        run: docker compose config --quiet
+      - name: Build API image
+        run: docker build --tag hoopslab-api:ci .
+      - name: Build frontend image
+        run: docker build --tag hoopslab-frontend:ci ./frontend
