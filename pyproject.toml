@@ -1,0 +1,54 @@
+[project]
+name = "hoopslab"
+version = "0.1.0"
+description = "Reproducible NBA shot-quality analytics"
+readme = "README.md"
+requires-python = ">=3.13,<3.14"
+dependencies = [
+    "alembic>=1.16,<2",
+    "httpx>=0.28,<1",
+    "psycopg[binary]>=3.2,<4",
+    "pyarrow>=21,<24",
+    "pydantic>=2.11,<3",
+    "pydantic-settings>=2.10,<3",
+    "scikit-learn>=1.7,<2",
+    "sqlalchemy>=2.0,<3",
+]
+
+[dependency-groups]
+dev = [
+    "mypy>=1.17,<2",
+    "pytest>=8.4,<10",
+    "ruff>=0.12,<1",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["backend/src/hoopslab"]
+
+[tool.pytest.ini_options]
+addopts = "-ra --strict-config --strict-markers"
+testpaths = ["backend/tests"]
+markers = [
+    "integration: requires a migrated PostgreSQL test database",
+]
+
+[tool.ruff]
+target-version = "py313"
+line-length = 88
+src = ["backend/src", "backend/tests", "scripts"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
+
+[tool.mypy]
+python_version = "3.13"
+strict = true
+files = ["backend/src", "backend/tests", "scripts"]
+
+[[tool.mypy.overrides]]
+module = ["pyarrow", "pyarrow.*"]
+ignore_missing_imports = true

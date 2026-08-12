@@ -1,0 +1,38 @@
+# Python environments and caches
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+dist/
+build/
+*.egg-info/
+
+# Local configuration; keep the documented example
+.env
+.env.*
+!.env.example
+
+# External and generated data
+data/raw/
+data/processed/
+data/interim/
+data/postgres/
+artifacts/
+models/
+mlruns/
+.cache/
+
+# Future frontend dependencies and builds
+node_modules/
+frontend/dist/
+frontend/.vite/
+
+# Editors and operating systems
+.DS_Store
+.idea/
+.vscode/
+*.swp
