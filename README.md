@@ -1,5 +1,22 @@
 # HoopsLab
 
+[![CI](https://github.com/hamzaAhmed21st/hoopslab/actions/workflows/ci.yml/badge.svg)](https://github.com/hamzaAhmed21st/hoopslab/actions/workflows/ci.yml)
+
+**Explore NBA shooting through a full-stack analytics application: reproducible data ingestion, chronological model evaluation, FastAPI inference, and a React shot-chart dashboard.**
+
+## Start here
+
+- **See the product:** [dashboard preview](#dashboard-preview).
+- **Inspect the engineering:** [claim-to-code evidence guide](docs/EVIDENCE.md).
+- **Check execution:** [recorded CI run](https://github.com/hamzaAhmed21st/hoopslab/actions/runs/31649357416) — 79 backend tests passed, 1 skipped; 26 frontend tests passed at commit `6a96846`.
+- **Run it:** [local setup](#run-locally). Full model-backed analytics require locally generated data and model artifacts.
+
+| Engineering focus | Implemented behavior |
+| --- | --- |
+| Data integrity | Revision-pinned inputs, SHA-256/schema/row-count validation, and atomic season imports with repeat-import detection. |
+| Model evaluation | Whole-game chronological splits, separate calibration/selection segments, and a locked final-evaluation workflow. |
+| Application delivery | Validated single/batch inference, PostgreSQL analytics, and an interactive React/SVG court. |
+
 HoopsLab is an end-to-end basketball analytics and machine-learning project
 built from six completed NBA regular seasons (2018-19 through 2023-24). It
 combines reproducible, hash-pinned PostgreSQL ingestion; leakage-aware
@@ -9,6 +26,8 @@ chart.
 
 Expected FG% is the model's contextual make probability for a shot—not a causal
 estimate of player value, defender impact, or shot selection.
+
+## Dashboard preview
 
 ![HoopsLab dashboard showing LeBron James actual-versus-expected shooting and half-court shot locations](docs/images/hoopslab-dashboard.png)
 
@@ -35,6 +54,8 @@ leakage boundary, frozen modeling protocol, API runtime checks, and dashboard
 coordinate semantics.
 
 ## Held-out result
+
+**Evidence status:** The [original evaluation report](docs/evidence/final-test-report.json) and [matching provenance](docs/evidence/provenance.json) are published. Their recorded hashes were checked against the original local model, feature dataset, and split manifest. The trained bundle and datasets remain uncommitted; public CI does not independently reproduce these scores. See the [evidence guide](docs/EVIDENCE.md#model-results-and-reproducibility) for the verification boundary.
 
 The locked model was evaluated once on 218,701 shots from 1,230 whole games in
 the held-out 2023-24 regular season. These measurements describe that fixed

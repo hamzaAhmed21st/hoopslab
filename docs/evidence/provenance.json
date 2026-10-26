@@ -1,0 +1,206 @@
+{
+  "description": "Allowlisted excerpts from the original local selection lock and model manifest; final-test-report.json is an unchanged copy of the original report.",
+  "verification": "Original report/lock/manifest identities matched SHA-256 of the local model bundle, feature Parquet, and split manifest. No retraining or new evaluation was performed.",
+  "original_files": [
+    {
+      "path": "artifacts/modeling/final-test-report.json",
+      "sha256": "dc1fd4138f23fa3cbe8c315329a13a18e3d0118367d357343e64ace16147ea47"
+    },
+    {
+      "path": "artifacts/modeling/selection-lock.json",
+      "sha256": "2075a75fb56e0deb1f66466ad438b9f3bb6d18b3476b88220fb42cee735e2df7"
+    },
+    {
+      "path": "artifacts/modeling/model-manifest.json",
+      "sha256": "54970201f8e8370101e67ea42c4b27d82ce4ef6c4cf7c0e890544e98938ad245"
+    }
+  ],
+  "selection_lock": {
+    "created_at": "2026-08-12T20:42:09.855035+00:00",
+    "locked_at": "2026-08-12T20:43:26.265801+00:00",
+    "status": "locked",
+    "test_accessed": false,
+    "test_metrics_generated": false,
+    "artifact_file": "shot-quality-model.joblib",
+    "artifact_sha256": "fb075abb1647d8a6b13d25a0d391fa360fb89a61ce7d48fe3d02c1bc0453e6a5",
+    "feature_sha256": "c3f33e9c661d36e7e5903434eca706f6410a6d1710c14864addb5c234b19aa32",
+    "split_manifest_sha256": "576524b31809312659e7412ea8c3b6feb86b7b85d0ae66feaa3d2ac5e1312da5",
+    "feature_contract_version": "1",
+    "modeling_contract_version": 1,
+    "source_repository": "cdechoch/nba-data-archive",
+    "source_revision": "328e29170d2b338105cbd8f61fae129dcad4b754",
+    "source_assets": [
+      {
+        "relative_path": "per_season/shotdetail/2018.parquet",
+        "season_start": 2018,
+        "sha256": "b1e90544c0b8438972dc04d40bf505fab3118d04feb793a12b129474bb34c7ff"
+      },
+      {
+        "relative_path": "per_season/shotdetail/2019.parquet",
+        "season_start": 2019,
+        "sha256": "0e0c6e199434cbbb3b6df5dc694d2b427c45b877a7f9b69725cd7f6c98d36f00"
+      },
+      {
+        "relative_path": "per_season/shotdetail/2020.parquet",
+        "season_start": 2020,
+        "sha256": "1156d5ff44ad270cb4180f1c9b148009ce16d67262c6c41ca9e25059a0f4029a"
+      },
+      {
+        "relative_path": "per_season/shotdetail/2021.parquet",
+        "season_start": 2021,
+        "sha256": "4dec7031499178917cfd1fe4ce04971dacb73dd9b3542f4f5a10e2cdcccf7362"
+      },
+      {
+        "relative_path": "per_season/shotdetail/2022.parquet",
+        "season_start": 2022,
+        "sha256": "919bb13b68b6cdad8c2843144f10606a1a061666c92205c6ac3d1959fcff80fa"
+      },
+      {
+        "relative_path": "per_season/shotdetail/2023.parquet",
+        "season_start": 2023,
+        "sha256": "93ea6168f5ff925e114c1406906adc931e8d3f2e95403f23a100bd9068417e4d"
+      }
+    ],
+    "training_seasons": [
+      2018,
+      2019,
+      2020,
+      2021
+    ],
+    "calibration_end_inclusive": "2023-01-10",
+    "selection_date_range": [
+      "2023-01-11",
+      "2023-04-09"
+    ],
+    "seeds": {
+      "bootstrap": 20260813,
+      "model": 20260812
+    },
+    "package_versions": {
+      "joblib": "1.5.3",
+      "numpy": "2.5.2",
+      "pandas": "2.3.3",
+      "pyarrow": "23.0.1",
+      "python": "3.13.5",
+      "scikit_learn": "1.9.0",
+      "scipy": "1.18.0"
+    },
+    "feature_fields": [
+      "coordinate_x_ft",
+      "coordinate_y_ft",
+      "shot_distance_ft",
+      "shot_angle_degrees",
+      "period",
+      "seconds_remaining",
+      "shooter_is_home",
+      "action_type",
+      "shot_type",
+      "shot_zone_basic",
+      "shot_zone_area",
+      "shot_zone_range",
+      "season_type"
+    ],
+    "protocol": {
+      "calibration_methods": [
+        "none",
+        "sigmoid",
+        "isotonic"
+      ],
+      "global_selection": "log loss, Brier, 10-bin ECE, slice ECE, fold stability, ROC-AUC",
+      "rolling_selection": "mean log loss, Brier, log-loss SD, ROC-AUC, stable complexity"
+    },
+    "segments": {
+      "calibration": {
+        "first_game_date": "2022-10-18",
+        "games": 617,
+        "last_game_date": "2023-01-10",
+        "rows": 108768
+      },
+      "selection": {
+        "first_game_date": "2023-01-11",
+        "games": 613,
+        "last_game_date": "2023-04-09",
+        "rows": 108450
+      },
+      "training": {
+        "first_game_date": "2018-10-16",
+        "games": 4599,
+        "last_game_date": "2022-04-10",
+        "rows": 815279
+      }
+    },
+    "folds": [
+      {
+        "identifier": "fold-1",
+        "train_seasons": [
+          2018
+        ],
+        "validation_season": 2019
+      },
+      {
+        "identifier": "fold-2",
+        "train_seasons": [
+          2018,
+          2019
+        ],
+        "validation_season": 2020
+      },
+      {
+        "identifier": "fold-3",
+        "train_seasons": [
+          2018,
+          2019,
+          2020
+        ],
+        "validation_season": 2021
+      }
+    ]
+  },
+  "model_manifest": {
+    "manifest_version": 1,
+    "created_at": "2026-08-12T20:41:10.950162+00:00",
+    "artifact_file": "shot-quality-model.joblib",
+    "artifact_sha256": "fb075abb1647d8a6b13d25a0d391fa360fb89a61ce7d48fe3d02c1bc0453e6a5",
+    "feature_sha256": "c3f33e9c661d36e7e5903434eca706f6410a6d1710c14864addb5c234b19aa32",
+    "split_manifest_sha256": "576524b31809312659e7412ea8c3b6feb86b7b85d0ae66feaa3d2ac5e1312da5"
+  },
+  "selected_variant": {
+    "identifier": "hgb-lr0.05-leaves15-sigmoid",
+    "family": "hgb",
+    "calibration_method": "sigmoid",
+    "candidate_config": {
+      "c": null,
+      "family": "hgb",
+      "identifier": "hgb-lr0.05-leaves15",
+      "learning_rate": 0.05,
+      "max_leaf_nodes": 15
+    },
+    "preprocessing": {
+      "boolean": "shooter_is_home passthrough",
+      "categorical": "OrdinalEncoder unknown/missing=NaN with explicit HGB mask",
+      "numeric": "six numeric fields passthrough"
+    }
+  },
+  "logistic_comparator_variant": {
+    "identifier": "logistic-c1-isotonic",
+    "family": "logistic",
+    "calibration_method": "isotonic",
+    "candidate_config": {
+      "c": 1,
+      "family": "logistic",
+      "identifier": "logistic-c1",
+      "learning_rate": null,
+      "max_leaf_nodes": null
+    },
+    "preprocessing": {
+      "boolean": "shooter_is_home passthrough",
+      "categorical": "OneHotEncoder(handle_unknown=ignore) on six fields",
+      "numeric": "StandardScaler on six numeric fields"
+    }
+  },
+  "limitations": [
+    "This verifies consistency of the original local artifacts, not independent reproduction of predictions or scores.",
+    "Raw data, feature rows, per-game split assignments, and model binaries are not published.",
+    "The original records do not contain a training-code Git commit; no training commit is inferred from the later documentation or CI commit."
+  ]
+}
