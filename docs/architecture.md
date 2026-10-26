@@ -202,7 +202,7 @@ manifest, and explicit `pending_review` selection record. It records the full
 selected and logistic-comparator variants, independent selection metrics,
 runner-up deltas, segments, folds, fitted-preprocessing identity, hashes,
 versions, seeds, and a no-test-access assertion. `lock_model.py` is a separate
-coordinator-authorization action: it validates the records and bundle and
+selection-locking step: it validates the records and bundle and
 atomically changes only a valid pending record to `locked`. `evaluate_model.py`
 validates that locked record and bundle before loading 2023-24, and refuses to
 overwrite a final test report. This lets the analytics API load the selected
@@ -264,7 +264,7 @@ supports the access path, so no migration or speculative index was added.
 
 ## Dashboard boundary
 
-The recruiter-facing dashboard is a strict TypeScript React/Vite application.
+The dashboard is a React/Vite application using strict TypeScript.
 TanStack Query owns remote request state while component state contains only the
 selected player ID, one shared filter object, and shot-page offset. Changing the
 player or any filter resets that offset. Readiness, model metadata, player
@@ -284,8 +284,7 @@ home/away team designation. The summary always describes the entire filtered
 population. The chart and table instead share one newest-first 100-shot page,
 state its exact range and total, and paginate without changing summary scope.
 
-The primary visualization is a code-native responsive half-court SVG, not a
-charting abstraction. Source coordinates are feet with the basket at `(0, 0)`
+The primary visualization is a custom responsive half-court SVG. Source coordinates are feet with the basket at `(0, 0)`
 and positive y running away from it. The physical view is x `[-25, 25]`, y
 `[-4.75, 42.25]`; the transform is
 `x = left + ((x + 25) / 50) * width` and
@@ -304,6 +303,8 @@ remain unavailable.
 ## Generated artifacts
 
 Raw/processed data, PostgreSQL volumes, feature matrices, trained models, ML
-caches, and evaluation outputs are ignored. The local modeling manifest records
+caches, and local evaluation outputs are ignored. The original aggregate
+evaluation report and provenance excerpts are published in
+[docs/evidence/](evidence/). The local modeling manifest records
 source/feature identities, feature/schema version, split boundaries, package
 versions, seeds, parameters, metrics, artifact SHA-256, and training time.

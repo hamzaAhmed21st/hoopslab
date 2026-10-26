@@ -2,69 +2,36 @@
 
 [![CI](https://github.com/hamzaAhmed21st/hoopslab/actions/workflows/ci.yml/badge.svg)](https://github.com/hamzaAhmed21st/hoopslab/actions/workflows/ci.yml)
 
-**Explore NBA shooting through a full-stack analytics application: reproducible data ingestion, chronological model evaluation, FastAPI inference, and a React shot-chart dashboard.**
+Explore NBA shooting across six seasons. Search for a player, filter their shots, and compare actual shooting with a model's expected make probability on an interactive court.
 
-## Start here
-
-- **See the product:** [dashboard preview](#dashboard-preview).
-- **Inspect the engineering:** [claim-to-code evidence guide](docs/EVIDENCE.md).
-- **Check execution:** [recorded CI run](https://github.com/hamzaAhmed21st/hoopslab/actions/runs/31649357416) — 79 backend tests passed, 1 skipped; 26 frontend tests passed at commit `6a96846`.
-- **Run it:** [local setup](#run-locally). Full model-backed analytics require locally generated data and model artifacts.
-
-| Engineering focus | Implemented behavior |
-| --- | --- |
-| Data integrity | Revision-pinned inputs, SHA-256/schema/row-count validation, and atomic season imports with repeat-import detection. |
-| Model evaluation | Whole-game chronological splits, separate calibration/selection segments, and a locked final-evaluation workflow. |
-| Application delivery | Validated single/batch inference, PostgreSQL analytics, and an interactive React/SVG court. |
-
-HoopsLab is an end-to-end basketball analytics and machine-learning project
-built from six completed NBA regular seasons (2018-19 through 2023-24). It
-combines reproducible, hash-pinned PostgreSQL ingestion; leakage-aware
-attempt-time features and chronological whole-game splits; a locked contextual
-shot-quality model served by FastAPI; and a React actual-versus-expected shot
-chart.
-
-Expected FG% is the model's contextual make probability for a shot—not a causal
-estimate of player value, defender impact, or shot selection.
+**Python · FastAPI · PostgreSQL · scikit-learn · React · TypeScript**
 
 ## Dashboard preview
 
 ![HoopsLab dashboard showing LeBron James actual-versus-expected shooting and half-court shot locations](docs/images/hoopslab-dashboard.png)
 
-## Architecture
+[Run locally](#run-locally) · [Implementation and tests](docs/EVIDENCE.md) · [Architecture](docs/architecture.md)
 
-```text
-six pinned shotdetail Parquet seasons
-  -> hash, schema, and row validation
-  -> atomic normalized PostgreSQL ingestion
-  -> local feature dataset + whole-game split manifest
-  -> locally locked probability model and calibration workflow
-  -> validated FastAPI inference + actual-vs-expected analytics
-  -> React player search, shot-quality summary, court, and shot table
-```
+## From source data to shot chart
 
-Ingestion validates the pinned revision, exact asset SHA-256, schema, and every
-row before atomically writing a normalized season. Feature generation keeps the
-binary outcome and identity/debug columns outside the 13-field model contract.
-The estimator is trained, calibrated, selected, and finally evaluated across
-chronologically separated seasons without splitting a game across boundaries.
+- **Reliable imports:** six revision-pinned NBA seasons, validated with SHA-256, schema, and row-count checks. Each season imports in one transaction; repeat imports are skipped and conflicting source records are rejected.
+- **Separate model development and evaluation:** chronological whole-game splits keep training, calibration, selection, and the final test season separate. The selected model is locked before final evaluation.
+- **A working analytics application:** FastAPI serves single/batch predictions and PostgreSQL-backed player summaries. The React dashboard includes player search, filters, a custom SVG court, and paginated shots.
 
-See [docs/architecture.md](docs/architecture.md) for the relational contract,
-leakage boundary, frozen modeling protocol, API runtime checks, and dashboard
-coordinate semantics.
+The [implementation guide](docs/EVIDENCE.md) links each part to its code and tests, including rollback checks against PostgreSQL and a synthetic develop/lock/evaluate test.
 
 ## Held-out result
 
-**Evidence status:** The [original evaluation report](docs/evidence/final-test-report.json) and [matching provenance](docs/evidence/provenance.json) are published. Their recorded hashes were checked against the original local model, feature dataset, and split manifest. The trained bundle and datasets remain uncommitted; public CI does not independently reproduce these scores. See the [evidence guide](docs/EVIDENCE.md#model-results-and-reproducibility) for the verification boundary.
+The original August 12, 2026 evaluation covers **218,701 shots from 1,230 games** in the held-out 2023–24 season. The selected calibrated gradient-boosting model achieved lower log loss than the calibrated logistic comparator:
 
-The locked model was evaluated once on 218,701 shots from 1,230 whole games in
-the held-out 2023-24 regular season. These measurements describe that fixed
-evaluation; they are not a production-readiness or causal-performance claim.
+| Model | Log loss ↓ | Brier score ↓ | ROC-AUC ↑ |
+| --- | ---: | ---: | ---: |
+| Histogram gradient boosting + sigmoid calibration | 0.637055 | 0.224358 | 0.657832 |
+| Logistic regression + isotonic calibration | 0.642787 | 0.226538 | 0.650390 |
 
-| Model | Log loss | Brier | ROC-AUC | 10-bin ECE |
-| --- | ---: | ---: | ---: | ---: |
-| HGB, lr=0.05/leaves=15, sigmoid | 0.637055 | 0.224358 | 0.657832 | 0.006517 |
-| Locked logistic, C=1, isotonic | 0.642787 | 0.226538 | 0.650390 | 0.006944 |
+[Original evaluation report](docs/evidence/final-test-report.json) · [Model and data provenance](docs/evidence/provenance.json) · [Evaluation details](docs/EVIDENCE.md#model-results-and-reproducibility)
+
+These are recorded local results. The published report and provenance document the run; public CI does not retrain the full model or reproduce its scores.
 
 ## Stack
 
@@ -96,6 +63,12 @@ video, or play-by-play. Review the current
 
 Requirements: uv, Docker with Compose, Git, Node.js 24 LTS, and pnpm 11.20.0.
 
+**A fresh clone does not include the data or trained model.** You can run the automated checks without the full NBA dataset. The full dashboard needs an ingested database and compatible local model artifacts.
+
+These commands have been checked against the current scripts and configuration, but a fresh-clone walkthrough with the full dataset has not been executed.
+
+### Install and prepare the database
+
 ```bash
 uv sync --locked --all-groups
 cd frontend && CI=true pnpm install --frozen-lockfile && cd ..
@@ -104,52 +77,61 @@ docker compose up -d --wait db
 uv run alembic upgrade head
 ```
 
-To build the local database from the pinned source contract:
+### Build data and model artifacts
+
+If you already have the original compatible local database and model artifacts, skip this step and start the application. Otherwise, the data pipeline is:
 
 ```bash
-uv run python scripts/validate_source.py
-uv run python scripts/ingest.py
-uv run python scripts/data_quality.py
-uv run python scripts/build_features.py
+make source-validate
+make ingest
+make quality
+make features
 ```
 
-The locked model bundle and its lock/evaluation records are deliberately
-ignored. When they are available under `artifacts/modeling/`, run the API and
-dashboard in separate terminals:
+For a new local modeling run, use the default ignored artifact directory only if it has no existing locked selection or final report:
+
+```bash
+make develop-model
+make verify-model
+```
+
+Inspect the generated `artifacts/modeling/selection-lock.json` and development results before locking the selection. Then run:
+
+```bash
+make lock-model
+make evaluate-model
+make verify-model
+```
+
+The scripts reject redevelopment after locking and refuse to overwrite a final report. Keep existing results intact. A new run is a new experiment, not a replacement for the published historical report.
+
+The [API runtime](backend/src/hoopslab/api/runtime.py) checks the selected model configuration and expected data segments as well as matching artifact hashes. Generating a different valid model does not automatically make it compatible with this API. Full-data setup and training take additional time; this is not a prepackaged demo.
+
+### Start the application
+
+With the database and compatible artifacts available, run these in separate terminals:
 
 ```bash
 make api
 make frontend
 ```
 
-Open the dashboard at `http://localhost:5173` and the generated API documentation
-at `http://localhost:8000/docs`. To build the containerized stack instead:
+Dashboard: <http://localhost:5173>. API documentation: <http://localhost:8000/docs>.
+For the containerized stack, use `make stack-up` instead.
 
-```bash
-make stack-up
-```
+Without compatible model artifacts, the API answers `/health/live`, while readiness and model-dependent routes return 503. Startup does not download or train a model.
 
-Without the ignored locked artifacts, the API still starts and answers
-`/health/live`, while readiness and model-dependent routes honestly return 503.
-It never downloads, retrains, or substitutes a model at startup.
-
-## Verification
+## Tests
 
 ```bash
 make check
-make test              # real PostgreSQL integration tests after migration
+make test              # PostgreSQL integration tests; migrate the database first
 make frontend-check
 docker compose config
 ```
 
-CI repeats the locked backend/frontend checks against PostgreSQL and builds both
-runtime images without requiring raw NBA data or the ignored locked model.
+CI checks the backend and frontend, migrations, and container builds. The [recorded test results](docs/EVIDENCE.md#recorded-ci-evidence) include 79 backend passes, one skipped real-model smoke test, and 26 frontend passes at the linked historical commit.
 
-## Limitations
+## Interpreting the results
 
-The model deliberately excludes player, team, and opponent identities and has
-no score, defender, lineup, or verified venue context. Its discrimination is
-weaker for three-point and midrange attempts, and `shooter_is_home` is only the
-nominal schedule role during the 2020 bubble. Dashboard comparisons are
-descriptive actual-versus-contextual-expected summaries, not causal player
-rankings.
+Expected FG% describes a shot's contextual make probability. The model excludes player/team identities and lacks defender, lineup, and score context, so actual-versus-expected comparisons are descriptive rather than causal player rankings. Discrimination is weaker for three-point and midrange attempts; home/away is the nominal schedule role during the 2020 bubble.

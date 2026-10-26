@@ -1,8 +1,8 @@
 # HoopsLab: implementation and verification
 
-This guide connects the project's main accomplishments to executable code and tests. Start with the [dashboard preview](../README.md#dashboard-preview), then inspect one engineering path below.
+For a short code review, start with [transactional ingestion](../backend/src/hoopslab/ingestion.py) and its [PostgreSQL tests](../backend/tests/test_ingestion_database.py). For the modeling work, compare the [evaluation report](evidence/final-test-report.json) with the [protocol](../backend/src/hoopslab/modeling/protocol.py) and [workflow tests](../backend/tests/test_modeling.py).
 
-## Claim-to-code map
+## Implementation and tests
 
 | Accomplishment | Implementation | Verification |
 | --- | --- | --- |
@@ -38,13 +38,11 @@ The [original evaluation report](evidence/final-test-report.json), created on **
 
 **What is not committed:** the trained model binary, generated feature dataset, per-game split assignments, and full runtime lock/manifest files. Public readers can inspect the recorded scores and identities, but cannot independently recompute the predictions from these documentation files alone. CI's synthetic workflow tests verify behavior, not the full-dataset scores. The original records do not record a training-code Git commit; the historical CI commit above must not be treated as that missing identity.
 
-The [local setup](../README.md#run-locally) builds the database and features. The modeling entry points are [develop](../scripts/develop_model.py), [lock](../scripts/lock_model.py), [evaluate](../scripts/evaluate_model.py), and [verify](../scripts/verify_model.py). Without compatible local artifacts, model-dependent routes return 503 rather than substituting a model.
+The [local setup](../README.md#run-locally) describes database preparation, feature generation, and the develop/verify/lock/evaluate sequence. The serving runtime expects the recorded model configuration and exact segment sizes; it is not a general loader for arbitrary newly trained models. The modeling entry points are [develop](../scripts/develop_model.py), [lock](../scripts/lock_model.py), [evaluate](../scripts/evaluate_model.py), and [verify](../scripts/verify_model.py). Without compatible local artifacts, model-dependent routes return 503 rather than substituting a model.
 
-## Boundaries
+## Interpretation
 
 - This is descriptive shot-quality analysis, not a causal estimate of player or defender value.
 - Tests of locking and split separation do not establish that every possible source of modeling leakage is absent.
-- CI does not train on the full NBA dataset or reproduce the documented model scores.
-- No production traffic, user adoption, throughput, or latency benchmark is claimed.
 
 [Back to the project](../README.md)
